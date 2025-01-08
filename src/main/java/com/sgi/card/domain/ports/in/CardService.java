@@ -16,6 +16,6 @@ public interface CardService {
     Mono<CardResponse> updateCard(String cardId, Mono<CardRequest> card);
     Mono<CardResponse> associateDebitCardToAccount(String debitCardId, Mono<AssociateRequest> associateRequest);
     Mono<BalanceResponse> getPrimaryAccountBalance(String cardId);
-    Flux<TransactionResponse> getLastTransactions(String cardId);
+    Flux<TransactionResponse> getLastTransactions(String cardId, Integer page, Integer size);
     Mono<TransactionResponse> processPaymentOrWithdrawal(String cardId, Mono<PaymentRequest> request);
 }

@@ -48,6 +48,11 @@ public class CardController implements V1Api {
     }
 
     @Override
+    public Mono<ResponseEntity<Flux<TransactionResponse>>> getLastTransactions(String cardId, Integer page, Integer size, ServerWebExchange exchange) {
+        return Mono.fromSupplier(() -> ResponseEntity.ok().body(cardService.getLastTransactions(cardId, page, size)));
+    }
+
+    @Override
     public Mono<ResponseEntity<BalanceResponse>> getPrimaryAccountBalance(String cardId, ServerWebExchange exchange) {
         return cardService.getPrimaryAccountBalance(cardId)
                 .map(cardResponse -> ResponseEntity.ok().body(cardResponse));

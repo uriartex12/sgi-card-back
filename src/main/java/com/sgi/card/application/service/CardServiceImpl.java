@@ -12,12 +12,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.util.*;
+
+import static com.sgi.card.domain.shared.Constants.urlComponentBuilder;
+import static com.sgi.card.domain.shared.Constants.urlParamsComponentBuilder;
 
 @Slf4j
 @Service
@@ -26,6 +30,7 @@ public class CardServiceImpl implements CardService {
 
     @Value("${feign.client.config.account-service.url}")
     private String accountServiceUrl;
+
     @Value("${feign.client.config.transaction-service.url}")
     private String transactionServiceUrl;
 
@@ -107,12 +112,15 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
-    public Flux<TransactionResponse> getLastTransactions(String cardId) {
+    public Flux<TransactionResponse> getLastTransactions(String cardId, Integer page, Integer size) {
         return cardRepository.findById(cardId)
                 .switchIfEmpty(Mono.error(new CustomException(CustomError.E_CARD_NOT_FOUND)))
                 .flatMapMany(card ->
-                        Flux.from(webClient.get(transactionServiceUrl.concat("/v1/transactions/{productId}/card"),
-                                card.getId(),
+                        Flux.from(webClient.get(urlParamsComponentBuilder(transactionServiceUrl, "/v1/transactions",
+                                        Map.of("cardId", cardId,
+                                                "page", page,
+                                                "size", size)),
+                                null,
                                 TransactionResponse.class,
                                 true))
                 );
@@ -156,7 +164,6 @@ public class CardServiceImpl implements CardService {
         transactionRequest.setType(request.getType().name());
         transactionRequest.setAmount(request.getAmount());
         transactionRequest.setBalance(balance);
-
         return webClient.post(transactionServiceUrl.concat("/v1/transactions"),
                 transactionRequest,
                 TransactionResponse.class);
@@ -167,12 +174,4 @@ public class CardServiceImpl implements CardService {
                         Map.of("accountId",accountId, "action", action)),
                         Map.of("amount", amount), BalanceResponse.class);
     }
-
-    private String urlComponentBuilder(String domain, String url ,Map<String, Object> paths) {
-        return UriComponentsBuilder.fromUriString(domain)
-                .path(url)
-                .buildAndExpand(paths)
-                .toUriString();
-    }
-
 }
