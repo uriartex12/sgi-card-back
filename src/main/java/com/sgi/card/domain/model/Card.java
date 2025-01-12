@@ -30,10 +30,8 @@ public class Card {
     private String id;
     private String cardNumber;
     private Instant expirationDate;
-    @Field(targetType = FieldType.DECIMAL128)
-    private BigDecimal balance;
     private String type;
     private String mainAccountId;
     private List<String> associatedAccountIds;
-    private String customerId;
+    private String clientId;
 }

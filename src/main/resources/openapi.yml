@@ -226,7 +226,7 @@ paths:
                   $ref: '#/components/schemas/ErrorResponse'
   /v1/cards/{cardId}/transaction:
     post:
-      summary: Get card transactions
+      summary: Process card transactions
       operationId: processPaymentOrWithdrawal
       parameters:
         - name: cardId
@@ -247,7 +247,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TransactionResponse'
+                type: object
         '404':
           description: CardId not found
           content:
@@ -417,9 +417,11 @@ components:
     BalanceResponse:
       type: object
       properties:
-        cardId:
+        accountId:
           type: string
-        cardBalance:
+        clientId:
+          type: string
+        accountBalance:
           type: decimal
     TransactionResponse:
       type: object

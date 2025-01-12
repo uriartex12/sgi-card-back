@@ -5,10 +5,20 @@ import com.sgi.card.domain.ports.in.CardService;
 import com.sgi.card.domain.ports.out.CardRepository;
 import com.sgi.card.domain.ports.out.FeignExternalService;
 import com.sgi.card.domain.shared.CustomError;
-import com.sgi.card.infrastructure.dto.*;
+import com.sgi.card.infrastructure.dto.AccountResponse;
+import com.sgi.card.infrastructure.dto.BalanceResponse;
+import com.sgi.card.infrastructure.dto.CardResponse;
+import com.sgi.card.infrastructure.dto.PaymentRequest;
+import com.sgi.card.infrastructure.dto.TransactionResponse;
+import com.sgi.card.infrastructure.dto.CardRequest;
+import com.sgi.card.infrastructure.dto.AssociateRequest;
 import com.sgi.card.infrastructure.exception.CustomException;
 import com.sgi.card.infrastructure.mapper.CardMapper;
+import com.sgi.card.infrastructure.mapper.ExternalOrchestratorDataMapper;
+import com.sgi.card.infrastructure.subscriber.events.OrchestratorEvent;
+import com.sgi.card.infrastructure.subscriber.message.EventSender;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -16,10 +26,10 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.*;
 
-import static com.sgi.card.domain.shared.Constants.urlComponentBuilder;
-import static com.sgi.card.domain.shared.Constants.urlParamsComponentBuilder;
+import static com.sgi.card.domain.shared.Constants.*;
 
 @Slf4j
 @Service
@@ -36,11 +46,16 @@ public class CardServiceImpl implements CardService {
 
     private final FeignExternalService webClient;
 
+    private final EventSender kafkaTemplate;
+
     @Override
     public Mono<CardResponse> createCard(Mono<CardRequest> card) {
-        return card.flatMap( cardRequest ->
-               CardMapper.INSTANCE.map(Mono.just(cardRequest)))
+        return card.flatMap( cardRequest -> {
+            cardRequest.setCardNumber(generateCardNumber());
+            cardRequest.setExpirationDate(OffsetDateTime.now().plusYears(5));
+            return CardMapper.INSTANCE.map(Mono.just(cardRequest))
                .flatMap(cardRepository::save);
+        });
     }
 
     @Override
@@ -125,51 +140,39 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
-    public Mono<TransactionResponse> processPaymentOrWithdrawal(String cardId, Mono<PaymentRequest> paymentRequest) {
+    @SneakyThrows
+    public Mono<Void> processPaymentOrWithdrawal(String cardId, Mono<PaymentRequest> paymentRequest) {
         return cardRepository.findById(cardId)
                 .switchIfEmpty(Mono.error(new CustomException(CustomError.E_CARD_NOT_FOUND)))
-                .flatMap(card -> paymentRequest.flatMap( payment ->
-                        verifyFunds(card, payment.getAmount())
-                                .flatMap(accountId ->
-                                    modifyBalanceInAccountService(accountId, payment.getAmount(), "reduce")
-                                            .flatMap(balanceResponse ->
-                                                    registerTransaction(cardId, accountId, payment,
-                                                            balanceResponse.getCardBalance())
-                                            )
-                                )
+                .flatMap(card ->
+                        paymentRequest.flatMap(payment ->
+                                verifyFunds(card.getAssociatedAccountIds(), payment.getAmount())
+                                        .flatMap(balance -> {
+                                            OrchestratorEvent event = ExternalOrchestratorDataMapper.INSTANCE
+                                                    .toOrchestratorEvent(card, balance, payment);
+                                            event.setBalance(balance.getAccountBalance().subtract(payment.getAmount()));
+                                            return Mono.fromFuture(kafkaTemplate.sendEvent(event))
+                                                    .doOnSuccess(result -> log.info(KAFKA_MESSAGE, result.getRecordMetadata()))
+                                                    .doOnError(error -> log.error(ERROR_KAFKA_MESSAGE, error))
+                                                    .then();
+                                        })
                         )
                 );
     }
 
-    private Mono<String> verifyFunds(Card card, BigDecimal amount) {
-        return Flux.fromIterable(card.getAssociatedAccountIds())
+
+
+    private Mono<BalanceResponse> verifyFunds(List<String> associatedAccountIds, BigDecimal amount) {
+        return Flux.fromIterable(associatedAccountIds)
                 .concatMap(accountId ->
-                        Mono.from(webClient.get(transactionServiceUrl.concat("/v1/transactions/{productId}/card"),
+                        Mono.from(webClient.get(accountServiceUrl.concat("/v1/accounts/{accountId}/balances"),
                                         accountId,
                                         BalanceResponse.class ,
                                         false))
-                                .filter(response -> response.getCardBalance().compareTo(amount) >= 0)
-                                .map(BalanceResponse::getCardId)
+                                .filter(response -> response.getAccountBalance().compareTo(amount) >= 0)
                 )
                 .next()
                 .switchIfEmpty(Mono.error(new CustomException(CustomError.E_INSUFFICIENT_BALANCE)));
     }
 
-    private Mono<TransactionResponse> registerTransaction(String cardId, String accountId, PaymentRequest request, BigDecimal balance) {
-        TransactionRequest transactionRequest = new TransactionRequest();
-        transactionRequest.setCardId(cardId);
-        transactionRequest.setProductId(accountId);
-        transactionRequest.setType(request.getType().name());
-        transactionRequest.setAmount(request.getAmount());
-        transactionRequest.setBalance(balance);
-        return webClient.post(transactionServiceUrl.concat("/v1/transactions"),
-                transactionRequest,
-                TransactionResponse.class);
-    }
-
-    private Mono<BalanceResponse> modifyBalanceInAccountService(String accountId, BigDecimal amount, String action) {
-        return webClient.post(urlComponentBuilder(accountServiceUrl,"/accounts/{accountId}/balance/{action}",
-                        Map.of("accountId",accountId, "action", action)),
-                        Map.of("amount", amount), BalanceResponse.class);
-    }
 }

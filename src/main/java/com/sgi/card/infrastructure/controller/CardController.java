@@ -1,7 +1,12 @@
 package com.sgi.card.infrastructure.controller;
 
 import com.sgi.card.domain.ports.in.CardService;
-import com.sgi.card.infrastructure.dto.*;
+import com.sgi.card.infrastructure.dto.AssociateRequest;
+import com.sgi.card.infrastructure.dto.CardRequest;
+import com.sgi.card.infrastructure.dto.CardResponse;
+import com.sgi.card.infrastructure.dto.TransactionResponse;
+import com.sgi.card.infrastructure.dto.BalanceResponse;
+import com.sgi.card.infrastructure.dto.PaymentRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -59,9 +66,9 @@ public class CardController implements V1Api {
     }
 
     @Override
-    public Mono<ResponseEntity<TransactionResponse>> processPaymentOrWithdrawal(String cardId, Mono<PaymentRequest> paymentRequest, ServerWebExchange exchange) {
-        return cardService.processPaymentOrWithdrawal(cardId, paymentRequest)
-                .map(cardResponse -> ResponseEntity.ok().body(cardResponse));
+    public Mono<ResponseEntity<Object>> processPaymentOrWithdrawal(String cardId, Mono<PaymentRequest> paymentRequest, ServerWebExchange exchange) {
+        return   cardService.processPaymentOrWithdrawal(cardId, paymentRequest)
+                .thenReturn(ResponseEntity.ok().body(Map.of("message","Operation completed")));
     }
 
     @Override
