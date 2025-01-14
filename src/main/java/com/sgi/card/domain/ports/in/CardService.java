@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono;
 public interface CardService {
     Mono<CardResponse> createCard(Mono<CardRequest> card);
     Mono<Void> deleteCard(String cardId);
-    Flux<CardResponse> getAllCards();
+    Flux<CardResponse> getAllCards(String clientId, String type, String cardId);
     Mono<CardResponse> getCardById(String cardId);
     Mono<CardResponse> updateCard(String cardId, Mono<CardRequest> card);
     Mono<CardResponse> associateDebitCardToAccount(String debitCardId, Mono<AssociateRequest> associateRequest);

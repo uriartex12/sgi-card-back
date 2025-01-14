@@ -11,7 +11,7 @@ public interface CardRepository {
 
     Mono<Card> findById(String cardId);
 
-    Flux<CardResponse> findAll();
+    Flux<CardResponse> findAll(String clientId, String type, String cardId);
 
     Mono<Void> delete(Card card);
 

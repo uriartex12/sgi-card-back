@@ -66,8 +66,8 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
-    public Flux<CardResponse> getAllCards() {
-        return cardRepository.findAll();
+    public Flux<CardResponse> getAllCards(String clientId, String type, String cardId) {
+        return cardRepository.findAll(clientId, type, cardId);
     }
 
     @Override

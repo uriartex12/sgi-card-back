@@ -44,8 +44,8 @@ public class CardController implements V1Api {
     }
 
     @Override
-    public Mono<ResponseEntity<Flux<CardResponse>>> getAllCards(ServerWebExchange exchange) {
-        return Mono.fromSupplier(() -> ResponseEntity.ok().body(cardService.getAllCards()));
+    public Mono<ResponseEntity<Flux<CardResponse>>> getAllCards(String clientId, String type, String cardId, ServerWebExchange exchange) {
+        return Mono.fromSupplier(() -> ResponseEntity.ok().body(cardService.getAllCards(clientId, type, cardId)));
     }
 
     @Override

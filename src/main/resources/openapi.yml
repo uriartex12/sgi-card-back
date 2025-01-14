@@ -9,6 +9,25 @@ paths:
     get:
       summary: Retrieve all cards
       operationId: getAllCards
+      parameters:
+        - name: clientId
+          in: query
+          required: false
+          description: Id of client
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: false
+          description: type
+          schema:
+            type: string
+        - name: cardId
+          in: query
+          required: false
+          description: Id of card
+          schema:
+            type: string
       responses:
         '200':
           description: List of cards
@@ -346,8 +365,6 @@ components:
         type:
           type: string
           enum: [ DEBIT , CREDIT ]
-        balance:
-          type: decimal
         mainAccountId:
           type: string
         associatedAccountIds:

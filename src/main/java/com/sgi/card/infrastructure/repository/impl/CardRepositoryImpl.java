@@ -11,6 +11,9 @@ import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Objects;
+import java.util.stream.Stream;
+
 /**
  * Implementation of the {@link CardRepository} interface.
  * Provides operations for managing bank accounts using a JPA-based repository.
@@ -34,9 +37,11 @@ public class CardRepositoryImpl implements CardRepository {
     }
 
     @Override
-    public Flux<CardResponse> findAll() {
-        return repositoryJpa.findAll()
-                .map(CardMapper.INSTANCE::toCardResponse);
+    public Flux<CardResponse> findAll(String clientId, String type, String cardId) {
+        boolean allNull = Stream.of(clientId, type, cardId).allMatch(Objects::isNull);
+        Flux<Card> resultFlux = allNull
+                ? repositoryJpa.findAll() : repositoryJpa.findAllByIdOrTypeOrClientId(cardId, type, clientId);
+        return resultFlux.map(CardMapper.INSTANCE::toCardResponse);
     }
 
     @Override
