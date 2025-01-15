@@ -312,7 +312,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/TransactionResponse'
         '404':
-          description: Client not found
+          description: Card not found
           content:
             application/json:
               schema:
