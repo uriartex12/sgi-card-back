@@ -9,13 +9,14 @@ import org.springframework.cloud.client.circuitbreaker.ReactiveCircuitBreaker;
 import org.springframework.cloud.client.circuitbreaker.ReactiveCircuitBreakerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import static com.sgi.card.domain.shared.Constants.EXTERNAL_REQUEST_ERROR_FORMAT;
 import static com.sgi.card.domain.shared.Constants.EXTERNAL_REQUEST_SUCCESS_FORMAT;
 
 /**
- * Implementación del servicio externo Feign para realizar solicitudes HTTP de manera reactiva con soporte de Circuit Breaker.
+ * Implementation of the Feign external service to make HTTP requests in a reactive manner with Circuit Breaker support.
  */
 @Slf4j
 @Service
@@ -43,21 +44,27 @@ public class FeignExternalServiceImpl implements FeignExternalService {
                 .transformDeferred(circuitBreaker::run);
     }
 
+
     @Override
     public <R> Publisher<R> get(String url, String pathVariable, Class<R> responseType, boolean isFlux) {
         var responseSpec = webClient.get()
                 .uri(url, pathVariable)
                 .retrieve();
-        return Mono.from(getPublisher(responseSpec, responseType, isFlux))
-                .doOnNext(response -> logSuccess(url, response))
-                .doOnError(ex -> logError(url, ex))
-                .onErrorResume(ex -> Mono.error(new CustomException(CustomError.E_OPERATION_FAILED)))
-                .transformDeferred(circuitBreaker::run);
-    }
-
-    private <R> Publisher<R> getPublisher(WebClient.ResponseSpec responseSpec, Class<R> responseType, boolean isFlux) {
-        return isFlux ? responseSpec.bodyToFlux(responseType)
-                : responseSpec.bodyToMono(responseType);
+        if (isFlux) {
+            return responseSpec.bodyToFlux(responseType)
+                    .doOnNext(response -> logSuccess(url, response))
+                    .doOnError(ex -> logError(url, ex))
+                    .onErrorResume(ex
+                            -> Flux.error(new CustomException(CustomError.E_OPERATION_FAILED)))
+                    .transformDeferred(circuitBreaker::run);
+        } else {
+            return responseSpec.bodyToMono(responseType)
+                    .doOnNext(response -> logSuccess(url, response))
+                    .doOnError(ex -> logError(url, ex))
+                    .onErrorResume(ex
+                            -> Mono.error(new CustomException(CustomError.E_OPERATION_FAILED)))
+                    .transformDeferred(circuitBreaker::run);
+        }
     }
 
     private <R> void logSuccess(String url, R response) {

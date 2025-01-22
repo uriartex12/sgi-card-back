@@ -40,7 +40,8 @@ public class CardRepositoryImpl implements CardRepository {
     public Flux<CardResponse> findAll(String clientId, String type, String cardId) {
         boolean allNull = Stream.of(clientId, type, cardId).allMatch(Objects::isNull);
         Flux<Card> resultFlux = allNull
-                ? repositoryJpa.findAll() : repositoryJpa.findAllByIdOrTypeOrClientId(cardId, type, clientId);
+                ? repositoryJpa.findAll()
+                : repositoryJpa.findAllByIdOrTypeOrClientId(cardId, type, clientId);
         return resultFlux.map(CardMapper.INSTANCE::toCardResponse);
     }
 

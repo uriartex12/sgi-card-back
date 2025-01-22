@@ -1,11 +1,10 @@
-package com.sgi.card.application.service;
+package com.sgi.card.application.service.impl;
 
 import com.sgi.card.domain.model.Card;
 import com.sgi.card.domain.ports.in.CardService;
 import com.sgi.card.domain.ports.out.CardRepository;
 import com.sgi.card.domain.ports.out.FeignExternalService;
 import com.sgi.card.domain.shared.CustomError;
-import com.sgi.card.infrastructure.dto.AccountResponse;
 import com.sgi.card.infrastructure.dto.BalanceResponse;
 import com.sgi.card.infrastructure.dto.CardResponse;
 import com.sgi.card.infrastructure.dto.PaymentRequest;
@@ -53,6 +52,13 @@ public class CardServiceImpl implements CardService {
         return card.flatMap( cardRequest -> {
             cardRequest.setCardNumber(generateCardNumber());
             cardRequest.setExpirationDate(OffsetDateTime.now().plusYears(5));
+            List<String> associatedAccountIds = Optional.ofNullable(cardRequest.getMainAccountId())
+                    .map(mainAccountId -> {
+                        List<String> list = new ArrayList<>();
+                        list.add(mainAccountId);
+                        return list;
+                    }).orElseGet(ArrayList::new);
+            cardRequest.setAssociatedAccountIds(associatedAccountIds);
             return CardMapper.INSTANCE.map(Mono.just(cardRequest))
                .flatMap(cardRepository::save);
         });
@@ -118,9 +124,10 @@ public class CardServiceImpl implements CardService {
                 .flatMap(card ->
                         Mono.from(webClient.get(accountServiceUrl.concat("/v1/accounts/{accountId}/balance"),
                                 card.getMainAccountId(),
-                                AccountResponse.class,
+                                BalanceResponse.class,
                                 false))
-                                .map(CardMapper.INSTANCE::toBalance)
+                                .map( balance ->
+                                        CardMapper.INSTANCE.toBalance(balance, cardId))
                 );
     }
 
@@ -160,12 +167,10 @@ public class CardServiceImpl implements CardService {
                 );
     }
 
-
-
     private Mono<BalanceResponse> verifyFunds(List<String> associatedAccountIds, BigDecimal amount) {
         return Flux.fromIterable(associatedAccountIds)
                 .concatMap(accountId ->
-                        Mono.from(webClient.get(accountServiceUrl.concat("/v1/accounts/{accountId}/balances"),
+                        Mono.from(webClient.get(accountServiceUrl.concat("/v1/accounts/{accountId}/balance"),
                                         accountId,
                                         BalanceResponse.class ,
                                         false))

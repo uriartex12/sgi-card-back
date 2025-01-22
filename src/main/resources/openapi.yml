@@ -434,6 +434,8 @@ components:
     BalanceResponse:
       type: object
       properties:
+        cardId:
+          type: string
         accountId:
           type: string
         clientId:
@@ -455,6 +457,8 @@ components:
           enum: [DEPOSIT, WITHDRAWAL, PAYMENT, CHARGE]
         amount:
           type: number
+        cardId:
+          type: string
         clientId:
           type: string
         commission:

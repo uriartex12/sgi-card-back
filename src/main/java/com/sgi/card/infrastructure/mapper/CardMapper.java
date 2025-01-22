@@ -1,7 +1,6 @@
 package com.sgi.card.infrastructure.mapper;
 
 import com.sgi.card.domain.model.Card;
-import com.sgi.card.infrastructure.dto.AccountResponse;
 import com.sgi.card.infrastructure.dto.BalanceResponse;
 import com.sgi.card.infrastructure.dto.CardRequest;
 import com.sgi.card.infrastructure.dto.CardResponse;
@@ -27,7 +26,8 @@ public interface CardMapper {
 
     Card created(CardRequest card);
 
-    BalanceResponse toBalance(AccountResponse accountResponse);
+    @Mapping(target = "cardId", source = "cardId")
+    BalanceResponse toBalance(BalanceResponse balanceResponse, String cardId);
 
     default Mono<Card> map(Mono<CardRequest> cardRequestMono) {
         return cardRequestMono.map(this::created);

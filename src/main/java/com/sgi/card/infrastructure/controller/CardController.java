@@ -26,7 +26,7 @@ public class CardController implements V1Api {
     @Override
     public Mono<ResponseEntity<CardResponse>> associateDebitCardToAccount(String cardId, Mono<AssociateRequest> associateRequest, ServerWebExchange exchange) {
         return cardService.associateDebitCardToAccount(cardId, associateRequest)
-                .map(cardResponse -> ResponseEntity.status(HttpStatus.CREATED)
+                .map(cardResponse -> ResponseEntity.status(HttpStatus.OK)
                         .body(cardResponse));
     }
 

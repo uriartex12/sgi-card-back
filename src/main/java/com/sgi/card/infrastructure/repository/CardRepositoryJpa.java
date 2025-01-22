@@ -5,8 +5,8 @@ import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 import reactor.core.publisher.Flux;
 
 /**
- * Repositorio Reactivo para la entidad Card.
- * Extiende de ReactiveMongoRepository para realizar operaciones CRUD en MongoDB.
+ * Reactive repository for the Card entity.
+ * Extends ReactiveMongoRepository to perform CRUD operations on MongoDB.
  */
 public interface CardRepositoryJpa extends ReactiveMongoRepository<Card, String> {
 
